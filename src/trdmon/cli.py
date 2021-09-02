@@ -43,7 +43,10 @@ def cli():
         header=urwid.Text(("bg", "HEADER")),
         body =
         urwid.AttrMap(urwid.Filler(urwid.Columns([
-            urwid.LineBox(trdbox.trdbox_daq()),
+            urwid.Pile([
+                urwid.LineBox(trdbox.daq()),
+                urwid.LineBox(trdbox.trigger()),
+            ]),
             urwid.Pile([
                 # urwid.LineBox(trdmon.roc.state(0,2,0)),
                 urwid.LineBox(roc.info(0,2,0))
