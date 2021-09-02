@@ -7,7 +7,7 @@ dimwid
 # import sys
 # import time
 # import curses
-# import urwid
+import urwid
 # import proc
 # import dimmon
 import pydim
@@ -18,6 +18,17 @@ import os
 import struct
 # from pprint import pprint
 # import functools
+
+def exit_on_enter(key):
+    if key=='enter' or key=='q':
+        raise urwid.ExitMainLoop()
+
+def start(top_widget, palette):
+    loop = urwid.MainLoop(top_widget, palette, unhandled_input=exit_on_enter)
+    dimwid.connect_loop(loop)
+
+    loop.run()
+
 
 class dimwid_t:
 
