@@ -91,7 +91,7 @@ class daq(urwid.Pile):
         self.ev = 0
 
         self.w_run = urwid.Text("run")
-        self.w_ev = urwid.Text("run")
+        self.w_ev = urwid.Text("ev")
         self.w_rd = urwid.Text("bytes R")
 
         super().__init__([

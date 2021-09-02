@@ -5,6 +5,7 @@
 from . import dimwid
 from . import trdbox
 from . import roc
+from . import dim
 
 import logging
 import urwid
@@ -49,7 +50,8 @@ def cli():
             ]),
             urwid.Pile([
                 # urwid.LineBox(trdmon.roc.state(0,2,0)),
-                urwid.LineBox(roc.info(0,2,0))
+                urwid.LineBox(roc.info(0,2,0)),
+                urwid.LineBox(dim.servers()),
             ]),
             # trdbox_daq2(),
             # trdbox_daq_run(),
