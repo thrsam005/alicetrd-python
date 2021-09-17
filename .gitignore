@@ -2,3 +2,5 @@ __pycache__
 /venv
 /dist
 /src/pydcs_tdietel.egg-info
+
+/obsolete

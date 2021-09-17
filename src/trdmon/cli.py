@@ -40,24 +40,41 @@ def cli():
     ]
 
 
+
+
     top_widget = urwid.Frame(
         header=urwid.Text(("bg", "HEADER")),
         body =
-        urwid.AttrMap(urwid.Filler(urwid.Columns([
-            urwid.Pile([
-                urwid.LineBox(trdbox.daq()),
-                urwid.LineBox(trdbox.trigger()),
-            ]),
-            urwid.Pile([
-                # urwid.LineBox(trdmon.roc.state(0,2,0)),
-                urwid.LineBox(roc.info(0,2,0)),
-                urwid.LineBox(dim.servers()),
-            ]),
-            # trdbox_daq2(),
-            # trdbox_daq_run(),
-            # trdbox_daq_bytes_read(),
+        urwid.AttrMap(urwid.Filler(urwid.Pile([
+            urwid.LineBox(trdbox.daq()),
+            urwid.LineBox(trdbox.trigger()),
+            urwid.LineBox(roc.info(0,2,0)),
+            urwid.LineBox(dim.servers()),
         ])), 'bg'),
         focus_part='header')
+
+    # ----------------------------------------------------------------
+    # column layout
+    # ----------------------------------------------------------------
+
+    # top_widget = urwid.Frame(
+    #     header=urwid.Text(("bg", "HEADER")),
+    #     body =
+    #     urwid.AttrMap(urwid.Filler(urwid.Columns([
+    #         # urwid.Pile([
+    #             urwid.LineBox(trdbox.daq()),
+    #             urwid.LineBox(trdbox.trigger()),
+    #         # ]),
+    #         # urwid.Pile([
+    #             # urwid.LineBox(trdmon.roc.state(0,2,0)),
+    #             urwid.LineBox(roc.info(0,2,0)),
+    #             urwid.LineBox(dim.servers()),
+    #         # ]),
+    #         # trdbox_daq2(),
+    #         # trdbox_daq_run(),
+    #         # trdbox_daq_bytes_read(),
+    #     ])), 'bg'),
+    #     focus_part='header')
 
 
     dimwid.start(top_widget, palette)
