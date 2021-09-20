@@ -8,7 +8,21 @@ import functools
 from collections import namedtuple
 from typing import NamedTuple
 from pprint import pprint
+import logging
 
+from .logging import AddLocationFilter
+from .constants import eodmarker,eotmarker,magicmarker
+
+logger = logging.getLogger(__name__)
+# logger.setLevel(logging.DEBUG)
+
+logflt = AddLocationFilter()
+# logflt.suppress = ['ADC']
+logger.addFilter(logflt)
+
+
+def lead(ctx,dword):
+	return f"{ctx.current_dword:06x} {dword:08x}  "
 
 class decode:
 
@@ -54,10 +68,8 @@ class decode:
 
 class describe:
 
-	def __init__(self, fmt, level=3):
+	def __init__(self, fmt):
 		self.format = fmt
-		self.level = level
-		self.loglevel = 3
 
 	def __call__(self,func):
 
@@ -76,7 +88,8 @@ class describe:
 				retval = dict()
 
 			if 'description' not in retval:
-				retval['description'] = self.format.format(dword=dword, **fielddata, ctx=ctx)
+				logger.info(self.format.format(dword=dword, **fielddata, ctx=ctx))
+				# retval['description'] = msg
 
 			return retval
 
@@ -90,28 +103,29 @@ ParsingContext = namedtuple('ParsingContext', [
   'SIDE', 'HC', 'VER'
 ])
 
-
 # ------------------------------------------------------------------------
 # Generic dwords
 
 
-@describe("... skip parsing ...", level=0)
+@describe("... skip parsing ...")
 def skip_until_eod(ctx, dword):
 	pass
 
-@describe("tracklet")
+@describe("TRK tracklet")
 def parse_tracklet(state, dword):
-	assert(dword != 0x10001000)
+	assert(dword != eotmarker)
+	return dict(readlist=[[parse_tracklet, parse_eot]])
+
 
 @describe("EOT")
 def parse_eot(ctx, dword):
-	assert(dword == 0x10001000)
-	ctx.readlist.append([parse_eot, parse_hc0])
+	assert(dword == eotmarker)
+	return dict(readlist=[[parse_eot, parse_hc0]])
 
 @describe("EOD")
 def parse_eod(ctx, dword):
-	assert(dword == 0x00000000)
-	ctx.readlist.append([parse_eod])
+	assert(dword == eodmarker)
+	return dict(readlist=[[parse_eod]])
 
 # ------------------------------------------------------------------------
 # Half-chamber headers
@@ -132,14 +146,17 @@ def parse_hc0(ctx, dword, fields):
 	# An alternative to update the context - which one is easier to read?
 	# (ctx.major,ctx.minor,ctx.nhw,ctx.sm,ctx.layer,ctx.stack,ctx.side) = fields
 
+	# set an abbreviation for further log messages
 	side = 'A' if fields.i==0 else 'B'
 	ctx.HC   = f"{fields.s:02}_{fields.c}_{fields.p}{side}"
 
+	readlist = list()
 	for i in range(ctx.nhw):
-		ctx.readlist.append([parse_hc1, parse_hc2, parse_hc3])
+		readlist.append([parse_hc1, parse_hc2, parse_hc3])
 
 	# ctx.readlist.append([skip_until_eod])
-	ctx.readlist.append([parse_mcmhdr])
+	readlist.append([parse_mcmhdr])
+	return dict(readlist=readlist)
 
 @decode("tttt : ttbb : bbbb : bbbb : bbbb : bbpp : pphh : hh01")
 @describe("HC1 tb={t} bc={b} ptrg={p} phase={h}")
@@ -170,28 +187,43 @@ def parse_mcmhdr(ctx, dword, fields):
 
 	if ctx.major & 0x20:
 		# Zero suppression
-		ctx.readlist.append([parse_adcmask])
+		return dict(readlist=[[parse_adcmask]])
 
 	else:
+		readlist = list()
 		# No ZS -> read 21 channels, then expect next MCM header or EOD
 		for i in range ( 21 * (ctx.ntb // 3) ):
-			ctx.readlist.append([parse_adcdata])
-		ctx.readlist.append([parse_mcmhdr, parse_eod])
+			readlist.append([parse_adcdata])
+
+		readlist.append([parse_mcmhdr, parse_eod])
+		return dict(readlist=readlist)
 
 @decode("nncc : cccm : mmmm : mmmm : mmmm : mmmm : mmmm : 1100")
-@describe("MCM ADCMASK n={n} c={c} m={m:05x}")
 def parse_adcmask(ctx, dword, fields):
+	desc = "MSK "
 	count = 0
+	readlist = list()
+
 	for ch in range(21):
+		if ch in [9,19]:
+			desc += " "
+
 		if fields.m & (1<<ch):
 			count += 1
-			# for tb in range ( ctx.ntb , 0, -3 ):
+			desc += str(ch%10)
 			for tb in range ( 0, ctx.ntb , 3 ):
-				ctx.readlist.append([parse_adcdata(channel=ch, timebin=tb)])
+				readlist.append([parse_adcdata(channel=ch, timebin=tb)])
+		else:
+			desc += "."
 
-	ctx.readlist.append([parse_mcmhdr, parse_eod])
+
+	desc += f"  ({~fields.c & 0x1F} channels)"
+	readlist.append([parse_mcmhdr, parse_eod])
 	assert( count == (~fields.c & 0x1F) )
 
+	logger.info(desc)
+	return dict(readlist=readlist)
+	# return dict(description=desc, readlist=readlist)
 
 
 # ------------------------------------------------------------------------
@@ -208,6 +240,7 @@ class parse_adcdata:
 	def __init__(self, channel, timebin):
 		self.channel = channel
 		self.timebin = timebin
+		self.__name__ = "parse_adcdata"
 
 	# @decode("xxxx:xxxx:xxyy:yyyy:yyyy:zzzz:zzzz:zzff")
 	def __call__(self, ctx, dword):
@@ -216,18 +249,20 @@ class parse_adcdata:
 		z = (dword & 0x00000FFC) >>  2
 		f = (dword & 0x00000003) >>  0
 
-		desc = "ADCDATA   "
-		desc += f"ch {self.channel:2} " if self.timebin==0 else " "*6
-		desc += f"tb {self.timebin:2} (f={f})   {x:4}  {y:4}  {z:4}"
+		msg = "ADC "
+		msg += f"ch {self.channel:2} " if self.timebin==0 else " "*6
+		msg += f"tb {self.timebin:2} (f={f})   {x:4}  {y:4}  {z:4}"
 
-		return dict(description=desc)
+		logger.info(msg)
+		return dict()
+		# return dict(description=desc)
 
 
 # ------------------------------------------------------------------------
 class LinkParser:
 
-	end_of_tracklet = 0x10001000
-	end_of_data     = 0x00000000
+	# end_of_tracklet = 0x10001000
+	# end_of_data     = 0x00000000
 
 
 	#Defining the initial variables for class
@@ -241,21 +276,24 @@ class LinkParser:
         '''
 
 		ctx = ParsingContext
-		ctx.readlist = [ list([parse_tracklet, parse_eot]) ]
+		readlist = [ list([parse_tracklet, parse_eot]) ]
 
 		for i,dword in enumerate(linkdata):
 
-			ctx.current_dword = i
+			ctx.current_linkpos = i
+			ctx.current_dword = dword
+
+			logflt.where = f"{i:06x} {dword:08x}  "
 
 			# if True:
 			if False:
-				for j,l in enumerate(ctx.readlist):
+				for j,l in enumerate(readlist):
 					print("*** " if i==j else "    ", end="")
-					print( [ f.__name__ for f in ctx.readlist[j] ] )
+					print( [ f.__name__ for f in readlist[j] ] )
 
 
 			try:
-				for fct in ctx.readlist[i]:
+				for fct in readlist[i]:
 
 					# The function can raise an AssertionError to signal that
 					# it does not understand the dword
@@ -265,18 +303,36 @@ class LinkParser:
 					except AssertionError as ex:
 						continue
 
+					if not isinstance(result, dict):
+						break
+
+					if 'readlist' in result:
+						readlist.extend(result['readlist'])
 
 					# if result['description'].startswith("ch="): break
 					# if result['description'].startswith("ADCMASK"): break
 
 					# the function handled the dword -> we are done
-					print(f"{ctx.current_dword:06x} {dword:08x}  ", end="")
-					print(result['description'])
+					if 'description' in result:
+						print(f"{ctx.current_dword:06x} {dword:08x}  ", end="")
+						print(result['description'])
 
 					break
 
 			except IndexError:
-				print()
-				print("EXTRANEOUS DATA:")
-				print("reached end of read list, but there is more data")
+				logger.error(logflt.where + "extra data after end of readlist")
 				break
+
+def check_dword(dword):
+
+	ctx = dict()
+
+	parsers = [ parse_tracklet, parse_eot, parse_eod, parse_hc0, parse_hc1, parse_hc2, parse_hc3, parse_mcmhdr, parse_adcmask ]
+
+	for p in parsers:
+		try:
+			p(ctx,dword)
+		except AssertionError:
+			continue
+
+		print("Match:", p.__name__)

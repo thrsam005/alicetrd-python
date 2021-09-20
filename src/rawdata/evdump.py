@@ -7,10 +7,38 @@ import numpy as np
 import argparse
 from struct import unpack
 import time
+import click
+import logging
 
 from .header import TrdboxHeader
+from .linkparser import LinkParser
+from .logging import ColorFormatter
+from .logging import AddLocationFilter
 
-def evdump():
+# create logger with 'spam_application'
+logger = logging.getLogger(__name__)
+
+# # create console handler with a higher log level
+# ch = logging.StreamHandler()
+# ch.setLevel(logging.DEBUG)
+
+# ch.setFormatter(CustomFormatter())
+# logger.addHandler(ch)
+
+
+@click.command()
+@click.option('-l', '--loglevel', default=logging.INFO)
+def evdump(loglevel):
+
+
+    ch = logging.StreamHandler()
+    ch.setFormatter(ColorFormatter())
+    logging.basicConfig(level=loglevel, handlers=[ch])
+
+
+    # logging.getLogger("rawdata.linkparser").setLevel(logging.INFO)
+    # logging.getLogger("rawdata.linkparser").addHandler(ch)
+    # logger.setLevel(loglevel)
 
     # headwords = 8 #20000
     # tailwords = 4 #10000
@@ -42,6 +70,9 @@ def evdump():
     evno = -1
     filename_format = "ev{evno:08d}_eq{eq:04}.npy"
 
+    lp = LinkParser()
+
+
     while True:
         rawdata = socket.recv()
         evno += 1
@@ -53,19 +84,11 @@ def evdump():
         # print("-------------------------------------------------------------")
         payload = np.frombuffer(rawdata[header.header_size:], dtype=np.uint32)
 
-        if filename_format is not None:
-            vars = dict(evno=evno, eq=header.equipment())
-            with open(filename_format.format(**vars), "wb") as f:
-                np.save(f, payload)
+        # if filename_format is not None:
+        #     vars = dict(evno=evno, eq=header.equipment())
+        #     with open(filename_format.format(**vars), "wb") as f:
+        #         np.save(f, payload)
+        #
 
 
-        if len(payload)<(headwords+tailwords):
-            for i,x in enumerate(payload):
-                print(f"{i:06x} {x:08x}")
-
-        else:
-            for i,x in enumerate(payload[:headwords]):
-                print(f"{i:06x} {x:08x}")
-            print("...")
-            for i,x in enumerate(payload[-tailwords:], start=len(payload)-tailwords):
-                print(f"{i:06x} {x:08x}")
+        lp.process(payload)
