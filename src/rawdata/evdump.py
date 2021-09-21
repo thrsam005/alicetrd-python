@@ -11,7 +11,7 @@ import click
 import logging
 
 from .header import TrdboxHeader
-from .linkparser import LinkParser
+from .linkparser import LinkParser, logflt
 from .logging import ColorFormatter
 from .logging import AddLocationFilter
 
@@ -35,6 +35,9 @@ def evdump(loglevel):
     ch.setFormatter(ColorFormatter())
     logging.basicConfig(level=loglevel, handlers=[ch])
 
+    # Modify settings of the log filter
+    logflt.dword_types['ADC']['suppress'] = True
+    logflt.dword_types['MSK']['suppress'] = True
 
     # logging.getLogger("rawdata.linkparser").setLevel(logging.INFO)
     # logging.getLogger("rawdata.linkparser").addHandler(ch)

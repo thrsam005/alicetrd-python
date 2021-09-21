@@ -14,17 +14,19 @@ from .logging import AddLocationFilter
 from .constants import eodmarker,eotmarker,magicmarker
 
 logger = logging.getLogger(__name__)
-# logger.setLevel(logging.DEBUG)
-
 logflt = AddLocationFilter()
-# logflt.suppress = ['ADC']
 logger.addFilter(logflt)
 
 
-def lead(ctx,dword):
-	return f"{ctx.current_dword:06x} {dword:08x}  "
-
 class decode:
+	"""Decorator decoder class for 32-bit data words from TRAPconfig
+
+	The constructor takes a description of a TRAP data word in the format
+	used in the TRAP User Manual. It can then be used to decorate functions
+	to help with the parsing of data words according to	this format. If the
+	parsing succeeds, the function is called with an additional argument that
+	contains the extracted fields as a namedtuple. An assertion error is
+	raised dif the parsing fails."""
 
 	def __init__(self, pattern):
 
@@ -67,6 +69,10 @@ class decode:
 		return self.dtype(*[ (dword & x[1]) >> x[2] for x in self.fields ])
 
 class describe:
+	"""Decorator to generate messages about dwords
+
+	Probably this function is overkill and should be replaced with a single
+	log statement in the decorated functions."""
 
 	def __init__(self, fmt):
 		self.format = fmt
@@ -99,17 +105,19 @@ class describe:
 
 ParsingContext = namedtuple('ParsingContext', [
   'major', 'minor', 'nhw', 'sm', 'stack', 'layer', 'side', #from HC0
-  'ntb', 'bc_counter', 'pre_counter', 'pre_phase',
-  'SIDE', 'HC', 'VER'
+  'ntb', 'bc_counter', 'pre_counter', 'pre_phase', # from HC1
+  'SIDE', 'HC', 'VER' ##
 ])
 
 # ------------------------------------------------------------------------
 # Generic dwords
 
 
-@describe("... skip parsing ...")
+@describe("SKP ... skip parsing ...")
 def skip_until_eod(ctx, dword):
-	pass
+	assert(dword != eodmarker)
+	return dict(readlist=[[parse_eod, skip_until_eod]])
+
 
 @describe("TRK tracklet")
 def parse_tracklet(state, dword):
@@ -130,7 +138,6 @@ def parse_eod(ctx, dword):
 # ------------------------------------------------------------------------
 # Half-chamber headers
 
-# @parsefct(compare=0x80000001, mask=0x80000003)
 @decode("xmmm : mmmm : nnnn : nnnq : qqss : sssp : ppcc : ci01")
 @describe("HC0 {ctx.HC} ver=0x{m:X}.{n:X} nw={q}")
 def parse_hc0(ctx, dword, fields):
@@ -170,12 +177,12 @@ def parse_hc1(ctx, dword, fields):
 
 @decode("pgtc : nbaa : aaaa : xxxx : xxxx : xxxx : xx11 : 0001")
 @describe("HC2 - filter settings")
-def parse_hc2(self):
+def parse_hc2(ctx, dword, fields):
 	pass
 
 @decode("ssss : ssss : ssss : saaa : aaaa : aaaa : aa11 : 0101")
-@describe("HC3 - svn version")
-def parse_hc3(self):
+@describe("HC3 - svn version {s} {a}")
+def parse_hc3(ctx, dword, fields):
 	pass
 
 # ------------------------------------------------------------------------
@@ -185,13 +192,11 @@ def parse_hc3(self):
 @describe("MCM {r}:{m:02} event {e}")
 def parse_mcmhdr(ctx, dword, fields):
 
-	if ctx.major & 0x20:
-		# Zero suppression
+	if ctx.major & 0x20:   # Zero suppression
 		return dict(readlist=[[parse_adcmask]])
 
-	else:
+	else:  # No ZS -> read 21 channels, then expect next MCM header or EOD
 		readlist = list()
-		# No ZS -> read 21 channels, then expect next MCM header or EOD
 		for i in range ( 21 * (ctx.ntb // 3) ):
 			readlist.append([parse_adcdata])
 
@@ -319,6 +324,15 @@ class LinkParser:
 
 					break
 
+				else:
+					logger.error(logflt.where + "NO MATCH - testing possibilities")
+					# check_dword(dword)
+
+					# skip everything until EOD
+					readlist.extend([[parse_eod, skip_until_eod]])
+					continue
+
+
 			except IndexError:
 				logger.error(logflt.where + "extra data after end of readlist")
 				break
@@ -327,7 +341,9 @@ def check_dword(dword):
 
 	ctx = dict()
 
-	parsers = [ parse_tracklet, parse_eot, parse_eod, parse_hc0, parse_hc1, parse_hc2, parse_hc3, parse_mcmhdr, parse_adcmask ]
+	parsers = [ parse_tracklet, parse_eot, parse_eod,
+	  parse_hc0, parse_hc1, parse_hc2, parse_hc3,
+	  parse_mcmhdr, parse_adcmask, parse_adcdata(-1,-1) ]
 
 	for p in parsers:
 		try:
@@ -335,4 +351,4 @@ def check_dword(dword):
 		except AssertionError:
 			continue
 
-		print("Match:", p.__name__)
+		# log.debug("Match:", p.__name__)

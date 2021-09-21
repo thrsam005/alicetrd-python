@@ -60,6 +60,7 @@ class AddLocationFilter(logging.Filter):
       'TRK': { "prefix": '\033[0;32m' },
       'EOT': { "prefix": '\033[0;34m' },
       'EOD': { "prefix": '\033[0;34m' },
+      'SKP': { "prefix": '\033[0;31m' },
     }
 
     def filter(self, record):
