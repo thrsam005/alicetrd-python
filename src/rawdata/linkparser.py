@@ -153,15 +153,25 @@ def parse_hc0(ctx, dword, fields):
 	# An alternative to update the context - which one is easier to read?
 	# (ctx.major,ctx.minor,ctx.nhw,ctx.sm,ctx.layer,ctx.stack,ctx.side) = fields
 
+	# Data corruption seen with configs around svn r5930 -> no major/minor info
+	# This is a crude fix, and the underlying problem should be solved ASAP
+	if ctx.major==0 and ctx.minor==0 and ctx.nhw==0:
+		ctx.major = 0x20 # ZS
+		ctx.minor = 0
+		ctx.nhw   = 2
+
+
 	# set an abbreviation for further log messages
 	side = 'A' if fields.i==0 else 'B'
 	ctx.HC   = f"{fields.s:02}_{fields.c}_{fields.p}{side}"
 
 	readlist = list()
 	for i in range(ctx.nhw):
-		readlist.append([parse_hc1, parse_hc2, parse_hc3])
+		# check additional HC header in with HC1 last, because HC2 and HC3
+		# appear like HC1 with the (invalid) phase >= 12. This order avoids
+		# this ambiguity.
+		readlist.append([parse_hc3, parse_hc2, parse_hc1])
 
-	# ctx.readlist.append([skip_until_eod])
 	readlist.append([parse_mcmhdr])
 	return dict(readlist=readlist)
 
