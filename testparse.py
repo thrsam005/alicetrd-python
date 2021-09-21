@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
 import numpy as np
-
+import sys
 from rawdata import LinkParser
 import rawdata
+import logging
 
-rawdata.check_dword(0x0380c02b)
+logging.basicConfig(level=logging.INFO)
+rawdata.check_dword(int(sys.argv[1],0))
 
 
 
