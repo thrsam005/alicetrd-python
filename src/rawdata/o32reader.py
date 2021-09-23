@@ -19,33 +19,45 @@ class subevent_t(NamedTuple):
 class o32reader:
     """Reader class for files in the .o32 format.
 
-    The class can be used as an iterator over events in the file."""
+    The constructor takes a file name as input. If the if filename ends in
+    '.o32' it is read as a normal text file. If it ends in '.o32.bz2' it is
+    assumed to be bzip2-compressed, and it is decompressed with bzcat before
+    parsing.
+
+    The class can be used as an iterator over events in the file.
+
+    o32 is a simple, text-based format for TRD data that was inspired by older
+    formats used during the early commissioning. It contains the detector data
+    as 32-bit hexadecimal data words with one word per line. Event headers are
+    marked with a single hash mark at the beginning of the line (`/^## /`), and
+    sub-event headers for data from a single optical link or half-chamber with
+    a double hash mark (`/^## /`). Event and sub-event headers contain
+    clear-text data fields."""
+
 
     #Initial state variables:
     def __init__(self,file_name):
 
         self.filename = file_name
-
         self.line_number=0
         self.linebuf = None
 
-        # self.HC_header=0
-
-        # self.ev_timestamp = None
-
-        # self.n_subevents = 0
-        #
-        # self.blk_sfp = None
-        # self.blk_size = None
-        # self.blk_unread = 0
-
     def __iter__(self):
+
+        # I don't remember why I'm opening the file in the iterator and not in
+        # the constructor. Maybe to ensure that you can read the file several
+        # times with the same o32reader, although I'm not sure this is needed.
+
         if self.filename.endswith('.o32'):
             self.infile=open(self.filename, 'r')
+
         elif self.filename.endswith('.o32.bz2'):
             self.proc = subprocess.Popen(["bzcat", self.filename],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE)
             self.infile = self.proc.stdout
+
+        else:
+            raise ValueError(f"invalid file extension of input file {self.filename}")
 
         return self
 
@@ -126,13 +138,19 @@ class o32reader:
 
 
     def read_line(self):
+
+        # This function seems to support partial reading of lines, although
+        # I don't remember why and how.
         if self.linebuf is not None:
             tmp = self.linebuf
             self.linebuf = None
             return tmp
-        else:
-            self.line_number+=1
-            self.lastline = self.infile.readline().rstrip()
-            if isinstance(self.lastline, bytes):
-                self.lastline = self.lastline.decode()
-            return self.lastline
+
+        # The actual reader code
+        self.line_number+=1
+        self.lastline = self.infile.readline().rstrip()
+
+        # subprocess pipes return bytes, need to decode to string
+        if isinstance(self.lastline, bytes):
+            self.lastline = self.lastline.decode()
+        return self.lastline

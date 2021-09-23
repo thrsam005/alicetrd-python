@@ -68,32 +68,14 @@ def evdump(source, loglevel):
     elif source.startswith('tcp://'):
         reader = zmqreader(source)
 
+    else:
+        raise ValueError(f"unknown source type: {source}")
+
+
+    # The actual reading is handled by the reader and the LinkParser
+
     lp = LinkParser()
 
     for event in reader:
         for subevent in event.subevents:
-            # pprint(event)
-
             lp.process(subevent.payload)
-
-
-
-    # while True:
-    #     rawdata = socket.recv()
-    #     evno += 1
-    #
-    #     print("-------------------------------------------------------------")
-    #     header = TrdboxHeader(rawdata)
-    #     print(header, end="")
-    #
-    #     # print("-------------------------------------------------------------")
-    #     payload = np.frombuffer(rawdata[header.header_size:], dtype=np.uint32)
-    #
-    #     # if filename_format is not None:
-    #     #     vars = dict(evno=evno, eq=header.equipment())
-    #     #     with open(filename_format.format(**vars), "wb") as f:
-    #     #         np.save(f, payload)
-    #     #
-    #
-    #
-    #     lp.process(payload)
