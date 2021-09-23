@@ -5,3 +5,6 @@ __pycache__
 
 /obsolete
 *.npy
+*.o32
+*.o32.gz
+*.o32.bz2
