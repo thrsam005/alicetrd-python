@@ -111,7 +111,6 @@ class o32reader:
             else:
                 raise Exception('FATAL', 'unknown header field')
 
-        print(hdr)
         return hdr
 
 
