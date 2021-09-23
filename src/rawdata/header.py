@@ -14,12 +14,14 @@ class TrdboxHeader:
 
     def __init__(self, data):
 
-        # parse the first 3 data words
         # ( self.magic, self.equipment_type, self.equipment_id, self.version,
         # self.header_size, self.payload_size )
 
+        # parse the first 3 data words
         (magic, ety,eid,ver, hsz,psz)= unpack("IBBxBxBH",data[0:12])
-        dw = np.frombuffer(data[:self.header_size], dtype=np.uint32)
+
+        # get the dwords of the header
+        dw = np.frombuffer(data[:hsz], dtype=np.uint32)
 
         if magic == 0xDA7AFEED:
             logging.info(f"hdr00  {dw[0]:08x}  magic token")
@@ -28,7 +30,7 @@ class TrdboxHeader:
             raise AssertionError('invalid magic token')
 
         logging.info(f"hdr00  {dw[1]:08x}  equipment {ety:02X}:{eid:02X} header version v{ver}")
-        logging.info(f"hdr00  {dw[2]:08x}  hdr:{h}b  payload: {p}=0x{p:04X}b 0x{p//4:X} dwords")
+        logging.info(f"hdr00  {dw[2]:08x}  hdr:{hsz}b  payload: {psz}=0x{psz:04X}b 0x{psz//4:X} dwords")
 
         self.equipment_type = ety
         self.equipment_id = eid
@@ -36,11 +38,12 @@ class TrdboxHeader:
         self.payload_size = psz
 
         # parse the time information
-        if self.version in [1]:
+        if ver in [1]:
             ( sec, ns ) = unpack("II",data[12:20])
             self.timestamp = float(sec) + float(ns)*1e-9
 
-        logging.info(f"hdr00  {dw[3]:08x}  {time.ctime(time.gmtime(sec))}")
+        logging.info(f"hdr00  {dw[3]:08x}  {time.ctime(self.timestamp)}")
+        # logging.info(f"hdr00  {dw[3]:08x}  {time.ctime(time.gmtime(sec))}")
         logging.info(f"hdr00  {dw[4]:08x}  {ns}")
 
 

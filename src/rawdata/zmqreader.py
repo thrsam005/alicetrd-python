@@ -71,12 +71,12 @@ class zmqreader:
         rawdata = self.socket.recv()
 
         header = TrdboxHeader(rawdata)
-        if header.equipment_type in (0x10):
+        if header.equipment_type == 0x10:
             payload = np.frombuffer(rawdata[header.header_size:], dtype=np.uint32)
 
             subevent = subevent_t(header.equipment_type, header.equipment_id, payload)
 
-            return event(header.timestamp, payload)
+            return event_t(header.timestamp, tuple([subevent]))
 
         else:
             raise ValueError(f"unhandled equipment type 0x{header.equipment_type:0x2}")

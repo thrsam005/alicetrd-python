@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 #
 
-import sys
-import zmq
-import numpy as np
-import argparse
-from struct import unpack
-import time
+# import sys
+# import zmq
+# import numpy as np
+# import argparse
+# from struct import unpack
+# import time
 import click
 import logging
 from pprint import pprint
@@ -14,7 +14,7 @@ from pprint import pprint
 from .header import TrdboxHeader
 from .linkparser import LinkParser, logflt
 from .logging import ColorFormatter
-from .logging import AddLocationFilter
+# from .logging import AddLocationFilter
 from .o32reader import o32reader
 from .zmqreader import zmqreader
 
