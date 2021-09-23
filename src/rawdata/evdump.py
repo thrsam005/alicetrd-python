@@ -58,27 +58,11 @@ def evdump(source, loglevel):
     # # equipments = None # None -> read all equipments
     #
     #
-    # #  Socket to talk to server
-    # context = zmq.Context()
-    # socket = context.socket(zmq.SUB)
-    #
-    # print("Collecting updates from binary data server...")
-    # socket.connect("tcp://localhost:7776")
-    #
-    # # Subscribe to data feed
-    # magicbytes = np.array([0xDA7AFEED],dtype=np.uint32).tobytes()
-    #
-    # if equipments is None:
-    #     socket.setsockopt(zmq.SUBSCRIBE, magicbytes)
-    # else:
-    #     for eq in equipments:
-    #         filter = magicbytes + (eq).to_bytes(1,'little');
-    #         socket.setsockopt(zmq.SUBSCRIBE, filter)
-    #
-    # evno = -1
+
+
     # filename_format = "ev{evno:08d}_eq{eq:04}.npy"
 
-    if source.endswith(".o32"):
+    if source.endswith(".o32") or source.endswith(".o32.bz2"):
         reader = o32reader(source)
 
     elif source.startswith('tcp://'):

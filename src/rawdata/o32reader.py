@@ -1,6 +1,7 @@
 
 import numpy
 import re
+import subprocess
 from datetime import datetime
 from typing import NamedTuple
 
@@ -39,7 +40,13 @@ class o32reader:
         # self.blk_unread = 0
 
     def __iter__(self):
-        self.infile=open(self.filename, 'r')
+        if self.filename.endswith('.o32'):
+            self.infile=open(self.filename, 'r')
+        elif self.filename.endswith('.o32.bz2'):
+            self.proc = subprocess.Popen(["bzcat", self.filename],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+            self.infile = self.proc.stdout
+
         return self
 
     #Create dictionary
@@ -126,4 +133,6 @@ class o32reader:
         else:
             self.line_number+=1
             self.lastline = self.infile.readline().rstrip()
+            if isinstance(self.lastline, bytes):
+                self.lastline = self.lastline.decode()
             return self.lastline
