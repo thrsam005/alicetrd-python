@@ -284,36 +284,39 @@ class LinkParser:
 	def __init__(self):
 		pass
 
-	def process(self,linkdata):
-		'''
-		Process the data from one optical link
-        Parameter: linkdata = iterable list of uint32 data words
+	def process(self,linkdata, linkpos=-1):
+		'''Initialize parsing context and process data from one optical link.
+
+		Parameter: linkdata = iterable list of uint32 data words
         '''
 
-		ctx = ParsingContext
-		readlist = [ list([parse_tracklet, parse_eot]) ]
+		self.ctx = ParsingContext
+		self.ctx.current_linkpos = linkpos
 
-		for i,dword in enumerate(linkdata):
+		self.readlist = [ list([parse_tracklet, parse_eot]) ]
+		self.process_linkdata(linkdata)
 
-			ctx.current_linkpos = i
-			ctx.current_dword = dword
 
-			logflt.where = f"{i:06x} {dword:08x}  "
+	def process_linkdata(self, linkdata):
 
-			# if True:
-			if False:
-				for j,l in enumerate(readlist):
-					print("*** " if i==j else "    ", end="")
-					print( [ f.__name__ for f in readlist[j] ] )
+		for dword in linkdata:
 
+			self.ctx.current_linkpos += 1
+			self.ctx.current_dword = dword
+
+			logflt.where = f"{self.ctx.current_linkpos:06x} {dword:08x}  "
+
+			# Debugging:
+			# self.dump_readlist()
 
 			try:
-				for fct in readlist[i]:
+				# for fct in self.readlist[i]:
+				for fct in self.readlist.pop(0):
 
 					# The function can raise an AssertionError to signal that
 					# it does not understand the dword
 					try:
-						 result = fct(ctx,dword)
+						 result = fct(self.ctx,dword)
 
 					except AssertionError as ex:
 						continue
@@ -322,15 +325,12 @@ class LinkParser:
 						break
 
 					if 'readlist' in result:
-						readlist.extend(result['readlist'])
-
-					# if result['description'].startswith("ch="): break
-					# if result['description'].startswith("ADCMASK"): break
+						self.readlist.extend(result['readlist'])
 
 					# the function handled the dword -> we are done
-					if 'description' in result:
-						print(f"{ctx.current_dword:06x} {dword:08x}  ", end="")
-						print(result['description'])
+					# if 'description' in result:
+					# 	print(f"{ctx.current_dword:06x} {dword:08x}  ", end="")
+					# 	print(result['description'])
 
 					break
 
@@ -339,13 +339,17 @@ class LinkParser:
 					# check_dword(dword)
 
 					# skip everything until EOD
-					readlist.extend([[parse_eod, skip_until_eod]])
+					self.readlist.extend([[parse_eod, skip_until_eod]])
 					continue
 
 
 			except IndexError:
 				logger.error(logflt.where + "extra data after end of readlist")
 				break
+
+	def dump_readlist(self):
+		for j,l in enumerate(self.readlist):
+			print( [ f.__name__ for f in self.readlist[j] ] )
 
 def check_dword(dword):
 
