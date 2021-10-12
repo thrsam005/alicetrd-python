@@ -28,10 +28,18 @@ def pretrigger(ctx, cmd):
     ctx.obj.exec(f"write 0x08 {cmd}")
 
 @trdbox.command()
+@click.argument('sfp')
+@click.argument('cmd')
+@click.pass_context
+def sfp(ctx, sfp, cmd):
+    ctx.obj.exec(f"sfp{sfp} {cmd}")
+
+@trdbox.command()
 @click.argument('address', callback=lambda c,p,x: int(x,0))
 @click.pass_context
 def read(ctx, address):
-    print(ctx.obj.exec(f"read {address}"))
+    rd = ctx.obj.exec(f"read {address}")
+    print(f"Read from 0x{address:04x}: {rd} = 0x{rd:08x}"
 
 @trdbox.command()
 @click.argument('address', callback=lambda c,p,x: int(x,0))
