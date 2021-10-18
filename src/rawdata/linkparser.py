@@ -249,7 +249,7 @@ class parse_adcdata:
 	To parse ADC data, we need to know the channel number and the timebins
 	in this dword. I don't think this data should be kept in the context.
 	The parser for the MCM header / adcmask therefore stores it in the parser
-	for the ADC data word. This parser therefore has to be a callable function.
+	for the ADC data word. This parser therefore has to be a callable object.
 	"""
 
 	def __init__(self, channel, timebin):
