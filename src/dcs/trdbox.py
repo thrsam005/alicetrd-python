@@ -38,8 +38,8 @@ def sfp(ctx, sfp, cmd):
 @click.argument('address', callback=lambda c,p,x: int(x,0))
 @click.pass_context
 def read(ctx, address):
-    rd = ctx.obj.exec(f"read {address}")
-    print(f"Read from 0x{address:04x}: {rd} = 0x{rd:08x}"
+    rd = int(ctx.obj.exec(f"read {address}"),16)
+    print(f"Read from 0x{address:04x}: {rd} = 0x{rd:08x}")
 
 @trdbox.command()
 @click.argument('address', callback=lambda c,p,x: int(x,0))
