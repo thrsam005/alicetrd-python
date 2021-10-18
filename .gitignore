@@ -4,6 +4,7 @@ __pycache__
 /src/pytrd_tdietel.egg-info
 
 /obsolete
+/digits*.csv
 *.npy
 *.o32
 *.o32.gz
