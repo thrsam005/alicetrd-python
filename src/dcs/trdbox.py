@@ -58,6 +58,11 @@ def status(ctx):
         print(f"{r['name']:<10} [0x{r['addr']:03x}]: 0x{rd:08x} = {rd}")
 
 @trdbox.command()
+@click.pass_context
+def unblock(ctx, ch, thresh):
+    ctx.obj.exec(f"write {su704_pre_base+3} 1")
+
+@trdbox.command()
 @click.argument('ch', callback=lambda c,p,x: int(x,0))
 @click.argument('thresh', callback=lambda c,p,x: int(x,0))
 @click.pass_context
