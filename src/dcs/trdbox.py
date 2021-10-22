@@ -59,7 +59,7 @@ def status(ctx):
 
 @trdbox.command()
 @click.pass_context
-def unblock(ctx, ch, thresh):
+def unblock(ctx):
     ctx.obj.exec(f"write {su704_pre_base+3} 1")
 
 @trdbox.command()
