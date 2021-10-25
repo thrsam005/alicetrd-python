@@ -90,6 +90,12 @@ def sfp(ctx, sfp, cmd):
     ctx.obj.exec(f"sfp{sfp} {cmd}")
 
 @trdbox.command()
+@click.argument('sfp')
+@click.pass_context
+def dump(ctx, sfp, cmd):
+    ctx.obj.exec(f"dump sfp{sfp}")
+
+@trdbox.command()
 @click.argument('address', callback=lambda c,p,x: int(x,0))
 @click.pass_context
 def read(ctx, address):
